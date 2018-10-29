@@ -121,6 +121,8 @@ func backendFromConfig(conf *config.Config) storage.Backend {
 		backend = alibabaBackendFromConfig(conf)
 	case "openstack":
 		backend = openstackBackendFromConfig(conf)
+	case "tencent":
+		backend = tencentBackendFromConfig(conf)
 	default:
 		crash("Unsupported storage backend: ", storageFlag)
 	}
@@ -173,6 +175,13 @@ func alibabaBackendFromConfig(conf *config.Config) storage.Backend {
 		conf.GetString("storage.alibaba.prefix"),
 		conf.GetString("storage.alibaba.endpoint"),
 		conf.GetString("storage.alibaba.sse"),
+	))
+}
+
+func tencentBackendFromConfig(conf *config.Config) storage.Backend {
+	crashIfConfigMissingVars(conf, []string{"storage.tencent.url"})
+	return storage.Backend(storage.NewTencentCOSBackend(
+		conf.GetString("storage.tencent.url"),
 	))
 }
 

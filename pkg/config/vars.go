@@ -217,7 +217,7 @@ var configVars = map[string]configVar{
 		Default: "",
 		CLIFlag: cli.StringFlag{
 			Name:   "storage",
-			Usage:  "storage backend, can be one of: local, amazon, google",
+			Usage:  "storage backend, can be one of: local, amazon, google, tencent",
 			EnvVar: "STORAGE",
 		},
 	},
@@ -345,6 +345,15 @@ var configVars = map[string]configVar{
 			Name:   "storage-alibaba-sse",
 			Usage:  "server side encryption algorithm for Alibaba Cloud storage backend, AES256 or KMS",
 			EnvVar: "STORAGE_ALIBABA_SSE",
+		},
+	},
+	"storage.tencent.url": {
+		Type:    stringType,
+		Default: "",
+		CLIFlag: cli.StringFlag{
+			Name:   "storage-tencent-url",
+			Usage:  "COS endpoint url",
+			EnvVar: "STORAGE_TENCENT_URL",
 		},
 	},
 	"storage.openstack.container": {

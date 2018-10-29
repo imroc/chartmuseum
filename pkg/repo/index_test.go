@@ -18,13 +18,13 @@ package repo
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/suite"
 	"k8s.io/helm/pkg/proto/hapi/chart"
 	helm_repo "k8s.io/helm/pkg/repo"
-	"strings"
 )
 
 type IndexTestSuite struct {
