@@ -17,11 +17,16 @@ limitations under the License.
 package multitenant
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	pathutil "path/filepath"
+	"time"
 
 	cm_logger "github.com/helm/chartmuseum/pkg/chartmuseum/logger"
 	cm_repo "github.com/helm/chartmuseum/pkg/repo"
-
+	"k8s.io/helm/pkg/proto/hapi/chart"
 	helm_repo "k8s.io/helm/pkg/repo"
 )
 
@@ -71,14 +76,33 @@ func (server *MultiTenantServer) deleteChartVersion(log cm_logger.LoggingFn, rep
 	}
 	provFilename := pathutil.Join(repo, cm_repo.ProvenanceFilenameFromNameVersion(name, version))
 	server.StorageBackend.DeleteObject(provFilename) // ignore error here, may be no prov file
+	if server.NotificationURL != "" {
+		event := &Event{
+			Action:   "delete",
+			Repo:     repo,
+			Filename: filename,
+			Metadata: &chart.Metadata{
+				Name:    name,
+				Version: version,
+			},
+		}
+		err := server.notify(event)
+		if err != nil {
+			return &HTTPError{500, err.Error()}
+		}
+	}
 	return nil
 }
 
 func (server *MultiTenantServer) uploadChartPackage(log cm_logger.LoggingFn, repo string, content []byte, force bool) *HTTPError {
-	filename, err := cm_repo.ChartPackageFilenameFromContent(content)
+
+	chart, err := cm_repo.ChartFromContent(content)
 	if err != nil {
 		return &HTTPError{500, err.Error()}
 	}
+	meta := chart.Metadata
+	filename := fmt.Sprintf("%s-%s.%s", meta.Name, meta.Version, cm_repo.ChartPackageFileExtension)
+
 	if !server.AllowOverwrite && (!server.AllowForceOverwrite || !force) {
 		_, err = server.StorageBackend.GetObject(pathutil.Join(repo, filename))
 		if err == nil {
@@ -92,12 +116,40 @@ func (server *MultiTenantServer) uploadChartPackage(log cm_logger.LoggingFn, rep
 	if limitReached {
 		return &HTTPError{507, "repo has reached storage limit"}
 	}
-	log(cm_logger.DebugLevel,"Adding package to storage",
+	log(cm_logger.DebugLevel, "Adding package to storage",
 		"package", filename,
 	)
 	err = server.StorageBackend.PutObject(pathutil.Join(repo, filename), content)
 	if err != nil {
 		return &HTTPError{500, err.Error()}
+	}
+	if server.NotificationURL != "" {
+		event := &Event{
+			Action:   "upload",
+			Repo:     repo,
+			Filename: filename,
+			Metadata: meta,
+		}
+		err = server.notify(event)
+		if err != nil {
+			return &HTTPError{500, err.Error()}
+		}
+	}
+	return nil
+}
+
+func (server *MultiTenantServer) notify(event *Event) error {
+	event.Timestamp = time.Now()
+	body, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(server.NotificationURL, "application/json; charset=UTF-8", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad response status: %s", resp.Status)
 	}
 	return nil
 }
@@ -120,7 +172,7 @@ func (server *MultiTenantServer) uploadProvenanceFile(log cm_logger.LoggingFn, r
 	if limitReached {
 		return &HTTPError{507, "repo has reached storage limit"}
 	}
-	log(cm_logger.DebugLevel,"Adding provenance file to storage",
+	log(cm_logger.DebugLevel, "Adding provenance file to storage",
 		"provenance_file", filename,
 	)
 	err = server.StorageBackend.PutObject(pathutil.Join(repo, filename), content)

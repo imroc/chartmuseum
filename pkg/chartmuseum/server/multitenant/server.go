@@ -54,6 +54,7 @@ type (
 		AllowForceOverwrite    bool
 		APIEnabled             bool
 		UseStatefiles          bool
+		NotificationURL        string
 		ChartURL               string
 		ChartPostFormFieldName string
 		ProvPostFormFieldName  string
@@ -68,6 +69,7 @@ type (
 		Router                 *cm_router.Router
 		StorageBackend         storage.Backend
 		ExternalCacheStore     cache.Store
+		NotificationURL        string
 		ChartURL               string
 		ChartPostFormFieldName string
 		ProvPostFormFieldName  string
@@ -113,6 +115,7 @@ func NewMultiTenantServer(options MultiTenantServerOptions) (*MultiTenantServer,
 		InternalCacheStore:     map[string]*cacheEntry{},
 		MaxStorageObjects:      options.MaxStorageObjects,
 		IndexLimit:             options.IndexLimit,
+		NotificationURL:        options.NotificationURL,
 		ChartURL:               chartURL,
 		ChartPostFormFieldName: options.ChartPostFormFieldName,
 		ProvPostFormFieldName:  options.ProvPostFormFieldName,
